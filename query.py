@@ -31,9 +31,22 @@ def get_vector_store():
     return Chroma(persist_directory=config.CHROMA_DIR, embedding_function=embeddings)
 
 
+def translate_query(question: str) -> str:
+    """Traduz a pergunta para inglês para melhorar a busca nos docs."""
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    response = client.messages.create(
+        model=config.MODEL_NAME,
+        max_tokens=256,
+        system="Translate the following question to English. Return ONLY the translated text, nothing else.",
+        messages=[{"role": "user", "content": question}],
+    )
+    return response.content[0].text
+
+
 def retrieve_context(vector_store, question: str) -> str:
     """Busca os chunks mais relevantes para a pergunta."""
-    results = vector_store.similarity_search(question, k=config.TOP_K)
+    english_query = translate_query(question)
+    results = vector_store.similarity_search(english_query, k=config.TOP_K)
 
     if not results:
         return "Nenhum documento relevante encontrado."

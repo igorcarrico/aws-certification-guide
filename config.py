@@ -12,8 +12,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "docs")
 CHROMA_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
 
 # Chunking
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+CHUNK_SIZE = 1500
+CHUNK_OVERLAP = 300
 
 # Retrieval
-TOP_K = 5
+TOP_K = 8
