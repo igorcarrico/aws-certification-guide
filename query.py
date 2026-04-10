@@ -2,6 +2,7 @@
 Lógica de RAG: busca documentos relevantes e gera resposta com Claude.
 """
 
+import os
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from anthropic import Anthropic
@@ -43,23 +44,30 @@ def translate_query(question: str) -> str:
     return response.content[0].text
 
 
-def retrieve_context(vector_store, question: str) -> str:
+def retrieve_context(vector_store, question: str) -> tuple[str, list[dict]]:
     """Busca os chunks mais relevantes para a pergunta."""
     english_query = translate_query(question)
     results = vector_store.similarity_search(english_query, k=config.TOP_K)
 
     if not results:
-        return "Nenhum documento relevante encontrado."
+        return "Nenhum documento relevante encontrado.", []
 
     context_parts = []
+    sources = []
+    seen = set()
+
     for i, doc in enumerate(results, 1):
         source = doc.metadata.get("source", "desconhecido")
         page = doc.metadata.get("page", "?")
         context_parts.append(
             f"[Documento {i} - {source} (p.{page})]\n{doc.page_content}"
         )
+        filename = os.path.basename(source)
+        if filename not in seen:
+            seen.add(filename)
+            sources.append({"filename": filename, "page": page})
 
-    return "\n\n---\n\n".join(context_parts)
+    return "\n\n---\n\n".join(context_parts), sources
 
 
 def generate_answer(question: str, context: str) -> str:
@@ -84,9 +92,58 @@ Pergunta do estudante: {question}"""
     return response.content[0].text
 
 
-def ask(question: str) -> str:
-    """Pipeline completo: busca contexto e gera resposta."""
+def ask(question: str) -> tuple[str, list[dict]]:
+    """Pipeline completo: busca contexto e gera resposta com fontes."""
     vector_store = get_vector_store()
-    context = retrieve_context(vector_store, question)
+    context, sources = retrieve_context(vector_store, question)
     answer = generate_answer(question, context)
-    return answer
+    return answer, sources
+
+
+QUIZ_PROMPT = """Você é um gerador de questões de simulado para a certificação AWS Cloud Practitioner (CLF-C02).
+
+Com base no contexto fornecido, gere exatamente {num_questions} questões de múltipla escolha.
+
+Regras:
+- Cada questão deve ter 4 alternativas (A, B, C, D)
+- Apenas uma alternativa correta por questão
+- As questões devem ser baseadas APENAS no contexto fornecido
+- Nível de dificuldade similar à prova real
+- Responda em português brasileiro
+
+Use EXATAMENTE este formato para cada questão:
+
+QUESTÃO 1: [texto da pergunta]
+A) [alternativa A]
+B) [alternativa B]
+C) [alternativa C]
+D) [alternativa D]
+RESPOSTA: [letra correta]
+EXPLICAÇÃO: [breve explicação de por que a resposta está correta]
+
+---"""
+
+
+def generate_quiz(topic: str, num_questions: int = 5) -> str:
+    """Gera questões de simulado sobre um tópico."""
+    vector_store = get_vector_store()
+    context, _ = retrieve_context(vector_store, topic)
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+
+    user_message = f"""Contexto dos documentos de estudo:
+
+{context}
+
+---
+
+Gere {num_questions} questões de simulado sobre: {topic}"""
+
+    response = client.messages.create(
+        model=config.MODEL_NAME,
+        max_tokens=4096,
+        system=QUIZ_PROMPT.format(num_questions=num_questions),
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+    return response.content[0].text
