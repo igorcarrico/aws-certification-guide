@@ -130,11 +130,40 @@ tab_chat, tab_quiz = st.tabs(["💬 Chat", "📝 Quiz"])
 with tab_chat:
     if "messages" not in st.session_state:
         st.session_state.messages = []
+    if "suggested_prompt" not in st.session_state:
+        st.session_state.suggested_prompt = None
 
     if st.session_state.get("messages"):
         if st.button("🗑️ Limpar conversa", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
+
+    # Mensagem de boas-vindas + perguntas sugeridas
+    if not st.session_state.messages:
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 2rem 0 1rem 0;">
+                <h3>Olá! Sou seu assistente de estudos para a certificação AWS Cloud Practitioner.</h3>
+                <p style="color: gray;">Faça uma pergunta ou escolha um dos tópicos abaixo para começar.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        suggested = [
+            "O que é Amazon S3 e para que serve?",
+            "Quais são os domínios da prova CLF-C02?",
+            "Explique o modelo de responsabilidade compartilhada da AWS",
+            "Qual a diferença entre EC2 e Lambda?",
+            "O que é IAM e como funciona?",
+            "Quais são os modelos de preços da AWS?",
+        ]
+
+        cols = st.columns(2)
+        for i, suggestion in enumerate(suggested):
+            if cols[i % 2].button(suggestion, use_container_width=True):
+                st.session_state.suggested_prompt = suggestion
+                st.rerun()
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -144,7 +173,12 @@ with tab_chat:
                     for source in message["sources"]:
                         st.markdown(f"- **{source['filename']}** (p. {source['page']})")
 
-    if prompt := st.chat_input("Faça uma pergunta sobre AWS Cloud Practitioner..."):
+    prompt = st.chat_input("Faça uma pergunta sobre AWS Cloud Practitioner...")
+    if st.session_state.suggested_prompt:
+        prompt = st.session_state.suggested_prompt
+        st.session_state.suggested_prompt = None
+
+    if prompt:
         if not config.ANTHROPIC_API_KEY:
             st.error("⚠️ Insira sua API key na sidebar para começar.")
         elif not os.path.exists(config.CHROMA_DIR):
@@ -169,6 +203,7 @@ with tab_chat:
             st.session_state.messages.append(
                 {"role": "assistant", "content": response, "sources": sources}
             )
+            st.rerun()
 
 # Aba Quiz
 with tab_quiz:
