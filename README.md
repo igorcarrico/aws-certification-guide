@@ -4,6 +4,12 @@ Assistente de estudo para a certificação **AWS Cloud Practitioner (CLF-C02)** 
 
 O sistema carrega documentos de estudo (PDFs, whitepapers, guias), indexa em um vector store e responde perguntas com base no conteúdo real dos documentos.
 
+## Screenshots
+
+![Tela inicial](images/Interface_projeto.PNG)
+
+![Exemplo de pergunta e resposta](images/pergunta1.png)
+
 ## Como funciona
 
 ```
@@ -48,7 +54,15 @@ cp .env.example .env
 
 ### 1. Adicione seus documentos de estudo
 
-Coloque seus PDFs na pasta `data/docs/`.
+Coloque seus PDFs na pasta `data/docs/`:
+
+```
+data/
+  docs/
+    aws-cloud-practitioner-guide.pdf
+    aws-whitepaper-overview.pdf
+    ...
+```
 
 ### 2. Indexe os documentos
 
@@ -74,6 +88,7 @@ aws-certification-guide/
 ├── query.py            # Lógica RAG (busca + geração)
 ├── requirements.txt    # Dependências
 ├── .env.example        # Exemplo de variáveis de ambiente
+├── .gitignore
 └── data/
     └── docs/           # PDFs de estudo (não versionados)
 ```
@@ -90,9 +105,12 @@ aws-certification-guide/
 ## Roadmap
 
 - [x] Pipeline RAG básico com PDFs
-- [x] Interface Streamlit
+- [x] Interface Streamlit com chat e modo quiz
+- [x] Busca bilíngue (perguntas em PT-BR, docs em inglês)
+- [x] Exibição de fontes por resposta
+- [x] Tela de boas-vindas com perguntas sugeridas
+- [x] Modo quiz com pontuação
 - [ ] Suporte a múltiplas certificações (Solutions Architect, Azure, GCP)
-- [ ] Modo quiz (geração de perguntas de simulado)
 - [ ] Histórico de conversas persistente
 - [ ] Deploy com Docker
 
